@@ -11,8 +11,8 @@ local CircleRadius = 170
 local BulletSpeed = 2200
 local TargetPlayer = nil
 local RightMouseButtonHeld = false
-local AimingEnabled = true
-local CircleVisible = true
+local AimingEnabled = false
+local CircleVisible = false
 local OriginalCircleColor = Color3.fromRGB(107, 98, 155)
 local GRAVITY = Workspace.Gravity
 local VELOCITY_MULTIPLIER = 1.12
@@ -58,7 +58,7 @@ local function CreateGUI()
     topBar.Parent = mainFrame
 
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Text = "RetriG: Premium v1.2.1"
+    titleLabel.Text = "RetriG: Premium v1.4.1"
     titleLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
     titleLabel.TextSize = 16
     titleLabel.Font = Enum.Font.GothamBold
@@ -77,7 +77,6 @@ local function CreateGUI()
     buttonContainer.Parent = mainFrame
 
     local buttonNames = {"Exploits", "Visual", "Misc", "Info"}
-    local buttons = {}
     
     for i = 1, 4 do
         local button = Instance.new("TextButton")
@@ -223,6 +222,79 @@ local function CreateAimbotControls()
     keybindButton.Font = Enum.Font.Gotham
     keybindButton.Parent = keybindFrame
 
+    local sliderFrame = Instance.new("Frame")
+    sliderFrame.BackgroundTransparency = 1
+    sliderFrame.Size = UDim2.new(1, -20, 0, 60)
+    sliderFrame.Position = UDim2.new(0, 10, 0, 100)
+    sliderFrame.Parent = container
+
+    local sliderLabel = Instance.new("TextLabel")
+    sliderLabel.Text = "Aimbot Radius: " .. math.floor(CircleRadius)
+    sliderLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sliderLabel.TextSize = 14
+    sliderLabel.Font = Enum.Font.Gotham
+    sliderLabel.BackgroundTransparency = 1
+    sliderLabel.Size = UDim2.new(1, 0, 0, 20)
+    sliderLabel.TextXAlignment = Enum.TextXAlignment.Left
+    sliderLabel.Parent = sliderFrame
+
+    local sliderTrack = Instance.new("Frame")
+    sliderTrack.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    sliderTrack.BorderSizePixel = 0
+    sliderTrack.Size = UDim2.new(1, -10, 0, 4)
+    sliderTrack.Position = UDim2.new(0, 5, 0, 35)
+    sliderTrack.Parent = sliderFrame
+
+    local sliderThumb = Instance.new("TextButton")
+    sliderThumb.Size = UDim2.new(0, 16, 0, 16)
+    sliderThumb.BackgroundColor3 = OriginalCircleColor
+    sliderThumb.BorderSizePixel = 0
+    sliderThumb.Text = ""
+    sliderThumb.Position = UDim2.new((CircleRadius - 50)/250, -8, 0, 28)
+    sliderThumb.Parent = sliderFrame
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(1, 0)
+    corner.Parent = sliderThumb
+
+    local sliding = false
+    local minRadius = 50
+    local maxRadius = 300
+
+    local function UpdateRadius(value)
+        CircleRadius = math.clamp(value, minRadius, maxRadius)
+        sliderLabel.Text = "Aimbot Radius: " .. math.floor(CircleRadius)
+        local ratio = (CircleRadius - minRadius) / (maxRadius - minRadius)
+        sliderThumb.Position = UDim2.new(ratio, -8, 0, 28)
+    end
+
+    sliderThumb.MouseButton1Down:Connect(function()
+        sliding = true
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliding = false
+        end
+    end)
+
+    sliderTrack.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            sliding = true
+            local absoluteX = input.Position.X - sliderTrack.AbsolutePosition.X
+            local ratio = math.clamp(absoluteX / sliderTrack.AbsoluteSize.X, 0, 1)
+            UpdateRadius(minRadius + ratio * (maxRadius - minRadius))
+        end
+    end)
+
+    sliderThumb.MouseMoved:Connect(function(x)
+        if sliding then
+            local absoluteX = x - sliderTrack.AbsolutePosition.X
+            local ratio = math.clamp(absoluteX / sliderTrack.AbsoluteSize.X, 0, 1)
+            UpdateRadius(minRadius + ratio * (maxRadius - minRadius))
+        end
+    end)
+
     checkBox.MouseButton1Click:Connect(function()
         AimingEnabled = not AimingEnabled
         CircleVisible = AimingEnabled
@@ -353,6 +425,9 @@ RunService.RenderStepped:Connect(function()
         Circle.Color = OriginalCircleColor
     end
 end)
+
+CreateGUI()
+CreateAimbotControls()
 
 CreateGUI()
 CreateAimbotControls()
