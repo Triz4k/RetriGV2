@@ -35,7 +35,8 @@ Circle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 local function CreateGUI()
     local gui = Instance.new("ScreenGui")
     gui.Name = "RetrigGUI"
-    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    gui.DisplayOrder = 100
     gui.ResetOnSpawn = false
     gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
@@ -58,7 +59,7 @@ local function CreateGUI()
     topBar.Parent = mainFrame
 
     local titleLabel = Instance.new("TextLabel")
-    titleLabel.Text = "RetriG: Premium V2"
+    titleLabel.Text = "RetriG: Premium v1.4.2"
     titleLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
     titleLabel.TextSize = 16
     titleLabel.Font = Enum.Font.GothamBold
@@ -110,7 +111,7 @@ local function CreateGUI()
         end)
         
         button.MouseButton1Click:Connect(function()
-            if buttonNames[i] == "Visual" then
+            if buttonNames[i] == "Exploits" then
                 CreateAimbotControls()
             else
                 ClearContent()
@@ -174,10 +175,21 @@ local function CreateAimbotControls()
     container.Size = UDim2.new(1, 0, 1, 0)
     container.Parent = contentFrame
 
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Text = "Aimbot Configuration"
+    headerLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+    headerLabel.TextSize = 18
+    headerLabel.Font = Enum.Font.GothamBold
+    headerLabel.BackgroundTransparency = 1
+    headerLabel.Size = UDim2.new(1, -20, 0, 30)
+    headerLabel.Position = UDim2.new(0, 10, 0, 10)
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    headerLabel.Parent = container
+
     local toggleFrame = Instance.new("Frame")
     toggleFrame.BackgroundTransparency = 1
     toggleFrame.Size = UDim2.new(1, -20, 0, 30)
-    toggleFrame.Position = UDim2.new(0, 10, 0, 10)
+    toggleFrame.Position = UDim2.new(0, 10, 0, 50)
     toggleFrame.Parent = container
 
     local checkBox = Instance.new("TextButton")
@@ -210,7 +222,7 @@ local function CreateAimbotControls()
     local keybindFrame = Instance.new("Frame")
     keybindFrame.BackgroundTransparency = 1
     keybindFrame.Size = UDim2.new(1, -20, 0, 30)
-    keybindFrame.Position = UDim2.new(0, 10, 0, 50)
+    keybindFrame.Position = UDim2.new(0, 10, 0, 100)
     keybindFrame.Parent = container
 
     local keybindButton = Instance.new("TextButton")
@@ -225,7 +237,7 @@ local function CreateAimbotControls()
     local sliderFrame = Instance.new("Frame")
     sliderFrame.BackgroundTransparency = 1
     sliderFrame.Size = UDim2.new(1, -20, 0, 60)
-    sliderFrame.Position = UDim2.new(0, 10, 0, 100)
+    sliderFrame.Position = UDim2.new(0, 10, 0, 150)
     sliderFrame.Parent = container
 
     local sliderLabel = Instance.new("TextLabel")
@@ -256,7 +268,7 @@ local function CreateAimbotControls()
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(1, 0)
     corner.Parent = sliderThumb
-
+=
     local sliding = false
     local minRadius = 50
     local maxRadius = 300
@@ -426,8 +438,9 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
+
 CreateGUI()
-CreateAimbotControls()
+CreateAimbotControls() 
 
 CreateGUI()
 CreateAimbotControls()
