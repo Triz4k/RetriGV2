@@ -440,7 +440,4 @@ end)
 
 
 CreateGUI()
-CreateAimbotControls() 
-
-CreateGUI()
 CreateAimbotControls()
