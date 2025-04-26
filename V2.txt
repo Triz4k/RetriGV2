@@ -1,0 +1,358 @@
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local CircleRadius = 170
+local BulletSpeed = 2200
+local TargetPlayer = nil
+local RightMouseButtonHeld = false
+local AimingEnabled = true
+local CircleVisible = true
+local OriginalCircleColor = Color3.fromRGB(107, 98, 155)
+local GRAVITY = Workspace.Gravity
+local VELOCITY_MULTIPLIER = 1.12
+local GRAVITY_COMPENSATION = 1.15
+
+local currentKey = Enum.KeyCode.F2
+local listening = false
+local checkMark = nil
+local mainFrame = nil
+local contentFrame = nil
+
+local Circle = Drawing.new("Circle")
+Circle.Visible = CircleVisible
+Circle.Color = OriginalCircleColor
+Circle.Thickness = 2
+Circle.Radius = CircleRadius
+Circle.Filled = false
+Circle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+local function CreateGUI()
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "RetrigGUI"
+    gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    gui.ResetOnSpawn = false
+    gui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+    mainFrame.BorderColor3 = Color3.fromRGB(60, 60, 80)
+    mainFrame.BorderSizePixel = 2
+    mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+    mainFrame.Size = UDim2.new(0, 400, 0, 600)
+    mainFrame.Visible = true
+    mainFrame.Parent = gui
+
+    local topBar = Instance.new("Frame")
+    topBar.Name = "TopBar"
+    topBar.BackgroundColor3 = Color3.fromRGB(40, 40, 60)
+    topBar.BorderSizePixel = 0
+    topBar.Size = UDim2.new(1, 0, 0, 30)
+    topBar.Parent = mainFrame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Text = "RetriG: Premium v1.2.1"
+    titleLabel.TextColor3 = Color3.fromRGB(220, 220, 255)
+    titleLabel.TextSize = 16
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Size = UDim2.new(0.9, 0, 0.8, 0)
+    titleLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    titleLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    titleLabel.TextXAlignment = Enum.TextXAlignment.Center
+    titleLabel.TextYAlignment = Enum.TextYAlignment.Center
+    titleLabel.Parent = topBar
+
+    local buttonContainer = Instance.new("Frame")
+    buttonContainer.BackgroundTransparency = 1
+    buttonContainer.Position = UDim2.new(0, 15, 0, 35)
+    buttonContainer.Size = UDim2.new(1, -30, 0, 40)
+    buttonContainer.Parent = mainFrame
+
+    local buttonNames = {"Exploits", "Visual", "Misc", "Info"}
+    local buttons = {}
+    
+    for i = 1, 4 do
+        local button = Instance.new("TextButton")
+        button.Name = buttonNames[i]
+        button.Text = buttonNames[i]
+        button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        button.TextSize = 13
+        button.Font = Enum.Font.Gotham
+        button.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+        button.BorderSizePixel = 0
+        
+        local buttonWidth = (buttonContainer.AbsoluteSize.X - 24) / 4
+        button.Position = UDim2.new(0, (i-1)*(buttonWidth + 8), 0, 0)
+        button.Size = UDim2.new(0, buttonWidth, 1, 0)
+        button.Parent = buttonContainer
+
+        button.MouseEnter:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, buttonWidth + 10, 1.1, 0),
+                Position = UDim2.new(0, (i-1)*(buttonWidth + 8) - 5, 0, -3),
+                BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+            }):Play()
+        end)
+        
+        button.MouseLeave:Connect(function()
+            TweenService:Create(button, TweenInfo.new(0.2), {
+                Size = UDim2.new(0, buttonWidth, 1, 0),
+                Position = UDim2.new(0, (i-1)*(buttonWidth + 8), 0, 0),
+                BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+            }):Play()
+        end)
+        
+        button.MouseButton1Click:Connect(function()
+            if buttonNames[i] == "Visual" then
+                CreateAimbotControls()
+            else
+                ClearContent()
+            end
+        end)
+    end
+
+    local separator = Instance.new("Frame")
+    separator.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+    separator.BorderSizePixel = 0
+    separator.Position = UDim2.new(0, 0, 0, 80)
+    separator.Size = UDim2.new(1, 0, 0, 1)
+    separator.Parent = mainFrame
+
+    contentFrame = Instance.new("Frame")
+    contentFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+    contentFrame.BorderSizePixel = 0
+    contentFrame.Position = UDim2.new(0, 0, 0, 81)
+    contentFrame.Size = UDim2.new(1, 0, 1, -81)
+    contentFrame.Parent = mainFrame
+
+    local dragging = false
+    local dragStart, startPos
+
+    mainFrame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = mainFrame.Position
+        end
+    end)
+
+    mainFrame.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            mainFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    mainFrame.InputEnded:Connect(function()
+        dragging = false
+    end)
+end
+
+local function ClearContent()
+    for _, child in ipairs(contentFrame:GetChildren()) do
+        child:Destroy()
+    end
+end
+
+local function CreateAimbotControls()
+    ClearContent()
+    
+    local container = Instance.new("Frame")
+    container.BackgroundTransparency = 1
+    container.Size = UDim2.new(1, 0, 1, 0)
+    container.Parent = contentFrame
+
+    local toggleFrame = Instance.new("Frame")
+    toggleFrame.BackgroundTransparency = 1
+    toggleFrame.Size = UDim2.new(1, -20, 0, 30)
+    toggleFrame.Position = UDim2.new(0, 10, 0, 10)
+    toggleFrame.Parent = container
+
+    local checkBox = Instance.new("TextButton")
+    checkBox.Size = UDim2.new(0, 20, 0, 20)
+    checkBox.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    checkBox.BorderSizePixel = 0
+    checkBox.Text = ""
+    checkBox.Parent = toggleFrame
+
+    checkMark = Instance.new("TextLabel")
+    checkMark.Text = "✓"
+    checkMark.TextColor3 = OriginalCircleColor
+    checkMark.TextSize = 18
+    checkMark.BackgroundTransparency = 1
+    checkMark.Size = UDim2.new(1, 0, 1, 0)
+    checkMark.Visible = AimingEnabled
+    checkMark.Parent = checkBox
+
+    local toggleLabel = Instance.new("TextLabel")
+    toggleLabel.Text = "Aimbot Enabled"
+    toggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    toggleLabel.TextSize = 14
+    toggleLabel.Font = Enum.Font.Gotham
+    toggleLabel.BackgroundTransparency = 1
+    toggleLabel.Position = UDim2.new(0, 30, 0, 0)
+    toggleLabel.Size = UDim2.new(0, 100, 1, 0)
+    toggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    toggleLabel.Parent = toggleFrame
+
+    local keybindFrame = Instance.new("Frame")
+    keybindFrame.BackgroundTransparency = 1
+    keybindFrame.Size = UDim2.new(1, -20, 0, 30)
+    keybindFrame.Position = UDim2.new(0, 10, 0, 50)
+    keybindFrame.Parent = container
+
+    local keybindButton = Instance.new("TextButton")
+    keybindButton.Size = UDim2.new(0.5, 0, 1, 0)
+    keybindButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    keybindButton.Text = "Bind Key: " .. tostring(currentKey):gsub("Enum%.KeyCode%.", "")
+    keybindButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keybindButton.TextSize = 14
+    keybindButton.Font = Enum.Font.Gotham
+    keybindButton.Parent = keybindFrame
+
+    checkBox.MouseButton1Click:Connect(function()
+        AimingEnabled = not AimingEnabled
+        CircleVisible = AimingEnabled
+        Circle.Visible = CircleVisible
+        checkMark.Visible = AimingEnabled
+    end)
+
+    keybindButton.MouseButton1Click:Connect(function()
+        if not listening then
+            listening = true
+            keybindButton.Text = "Press any key..."
+            keybindButton.BackgroundColor3 = Color3.fromRGB(80, 80, 100)
+            
+            local connection
+            connection = UserInputService.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.Keyboard then
+                    currentKey = input.KeyCode
+                    keybindButton.Text = "Bind Key: " .. tostring(currentKey):gsub("Enum%.KeyCode%.", "")
+                    listening = false
+                    keybindButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+                    connection:Disconnect()
+                end
+            end)
+        end
+    end)
+end
+
+local function GetBulletSpeed()
+    local character = LocalPlayer.Character
+    if character then
+        local gun = character:FindFirstChild("CurrentSelectedObject")
+        if gun and gun.Value then
+            local weaponName = gun.Value.Value.Name
+            local weaponData = ReplicatedStorage:FindFirstChild("GunData"):FindFirstChild(weaponName)
+            return weaponData and weaponData.Stats.BulletSettings.BulletSpeed.Value or 2200
+        end
+    end
+    return 2200
+end
+
+local function PredictPosition(targetPosition, targetVelocity)
+    local distance = (targetPosition - Camera.CFrame.Position).Magnitude
+    if distance < 1 then return targetPosition end
+    local travelTime = distance / BulletSpeed
+    return targetPosition + 
+        targetVelocity * travelTime * VELOCITY_MULTIPLIER + 
+        Vector3.new(0, 0.5 * GRAVITY * GRAVITY_COMPENSATION * travelTime^2, 0)
+end
+
+local function AimAtTarget()
+    if not TargetPlayer or not TargetPlayer.Character then return end
+    local head = TargetPlayer.Character:FindFirstChild("Head") or TargetPlayer.Character:FindFirstChild("ServerColliderHead")
+    if head and head:IsA("BasePart") then
+        local futurePos = PredictPosition(head.Position, head.Velocity)
+        local screenPoint = Camera:WorldToViewportPoint(futurePos)
+        
+        if screenPoint.Z > 0 then
+            local delta = (Vector2.new(screenPoint.X, screenPoint.Y) - Circle.Position)
+            mousemoverel(delta.X, delta.Y)
+        end
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input)
+
+    if input.KeyCode == Enum.KeyCode.RightShift then
+        mainFrame.Visible = not mainFrame.Visible
+    end
+
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightMouseButtonHeld = true
+    elseif input.KeyCode == currentKey then
+        AimingEnabled = not AimingEnabled
+        CircleVisible = AimingEnabled
+        Circle.Visible = CircleVisible
+        if checkMark then checkMark.Visible = AimingEnabled end
+        TargetPlayer = nil
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then
+        RightMouseButtonHeld = false
+        TargetPlayer = nil
+        Circle.Color = OriginalCircleColor
+    end
+end)
+
+RunService.RenderStepped:Connect(function()
+
+    Circle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+    Circle.Radius = CircleRadius
+    BulletSpeed = GetBulletSpeed()
+
+    if RightMouseButtonHeld and AimingEnabled then
+        local closestDistance = math.huge
+        local currentTarget = nil
+        
+        for _, player in pairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                local head = player.Character:FindFirstChild("Head") or player.Character:FindFirstChild("ServerColliderHead")
+                if head and head:IsA("BasePart") then
+                    local screenPos = Camera:WorldToViewportPoint(head.Position)
+                    
+                    if screenPos.Z > 0 then
+                        local center = Circle.Position
+                        local distance = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
+                        
+                        if distance < CircleRadius and distance < closestDistance then
+                            closestDistance = distance
+                            currentTarget = player
+                        end
+                    end
+                end
+            end
+        end
+        
+        TargetPlayer = currentTarget
+
+        if TargetPlayer then
+            Circle.Color = Color3.new(1, 0, 0)
+            AimAtTarget()
+        else
+            Circle.Color = OriginalCircleColor 
+        end
+    else
+        TargetPlayer = nil
+        Circle.Color = OriginalCircleColor
+    end
+end)
+
+CreateGUI()
+CreateAimbotControls()
